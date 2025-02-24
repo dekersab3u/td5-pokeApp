@@ -1,34 +1,36 @@
 <script>
-import {onMounted, ref} from "vue";
-import {getPokeDetails, getPokemonList, searchPokemon} from "@/services/RequestClient";
-import {addToBasket} from "@/services/basket";
+import { onMounted, ref } from "vue";
+import { getPokeDetails, getPokemonList, searchPokemon } from "@/services/RequestClient";
+import { addToBasket } from "@/services/basket";
 
 export default {
   name: "Accueil",
-  methods: {addToBasket},
+  methods: { addToBasket },
   setup() {
-    const pokemons = ref([]); // Liste des Pokémon affichés
-    const allPokemons = ref([]); // Liste des 25 Pokémon initiaux
-    const searchQuery = ref(""); // Input de la barre de recherche
+    const pokemons = ref([]);
+    const initialPokemons = ref([]); // Stocker la liste de départ
+    const searchTerm = ref("");
+    const searchResult = ref(null); // Stocke le résultat de la recherche
+    const errorMessage = ref(""); // Message d'erreur si aucun Pokémon trouvé
     const loading = ref(true);
     const error = ref(null);
 
-    // Récupérer la liste des 25 premiers Pokémon au chargement
+    // Charger les 25 premiers Pokémon
     const fetchPokemons = async () => {
       try {
         const data = await getPokemonList();
-        const details = await Promise.all(
+        const pokemonData = await Promise.all(
             data.results.map(async (poke) => {
-              const info = await getPokeDetails(poke.url.replace(/^.*\/v2(?=\/)/, ""));
+              const details = await getPokeDetails(poke.url.replace(/^.*\/v2(?=\/)/, ""));
               return {
                 name: poke.name,
-                image: info.sprites.front_default,
-                price: info.base_experience,
+                image: details.sprites.front_default,
+                price: details.base_experience,
               };
             })
         );
-        pokemons.value = details;
-        allPokemons.value = details;
+        pokemons.value = pokemonData;
+        initialPokemons.value = [...pokemonData]; // Sauvegarde des 25 premiers
       } catch (err) {
         error.value = "Impossible de charger les Pokémon.";
         console.error(err);
@@ -37,36 +39,38 @@ export default {
       }
     };
 
-    // Recherche un Pokémon spécifique dans l'API
+    // Recherche d'un Pokémon
     const handleSearch = async () => {
-      const query = searchQuery.value.trim().toLowerCase();
-      if (query === "") {
-        pokemons.value = allPokemons.value; // Si recherche vide, on remet la liste initiale
+      if (!searchTerm.value.trim()) {
+        errorMessage.value = "";
+        searchResult.value = null;
         return;
       }
 
       try {
-        loading.value = true;
-        const result = await searchPokemon(query);
-        pokemons.value = [
-          {
-            name: result.name,
-            image: result.sprites.front_default,
-            price: result.base_experience,
-          },
-        ];
-        error.value = null;
-      } catch (err) {
-        error.value = "Aucun Pokémon trouvé.";
-        pokemons.value = [];
-      } finally {
-        loading.value = false;
+        const result = await searchPokemon(searchTerm.value.toLowerCase());
+        if (result) {
+          searchResult.value = [
+            {
+              name: result.name,
+              image: result.sprites.front_default,
+              price: result.base_experience,
+            },
+          ];
+          errorMessage.value = "";
+        } else {
+          searchResult.value = null;
+          errorMessage.value = "Aucun Pokémon trouvé.";
+        }
+      } catch {
+        searchResult.value = null;
+        errorMessage.value = "Aucun Pokémon trouvé.";
       }
     };
 
     onMounted(fetchPokemons);
 
-    return {pokemons, loading, error, searchQuery, handleSearch};
+    return {pokemons, initialPokemons, searchTerm, searchResult, errorMessage, handleSearch, loading, error};
   },
 };
 </script>
@@ -75,30 +79,46 @@ export default {
   <div class="container">
     <h1>Liste des Pokémon</h1>
 
-    <!-- Barre de recherche -->
-    <input
-        v-model="searchQuery"
-        @input="handleSearch"
-        placeholder="Rechercher un Pokémon..."
-        class="search-bar"
-    />
+    <div class="search-bar">
+      <input v-model="searchTerm"
+             type="text"
+             placeholder="Rechercher un Pokémon..."/>
+      <button @click="handleSearch">Rechercher</button>
+    </div>
 
     <div v-if="loading">Chargement...</div>
     <div v-else-if="error"
          class="error">{{ error }}
     </div>
-    <div v-else
-         class="pokemon-list">
-      <div v-for="pokemon in pokemons"
+
+    <!-- Affichage du message d'erreur si aucun Pokémon n'est trouvé -->
+    <div v-if="errorMessage"
+         class="error-message">{{ errorMessage }}
+    </div>
+
+    <div class="pokemon-list">
+      <!-- Si une recherche a été effectuée et a réussi, afficher le Pokémon trouvé -->
+      <div v-if="searchResult"
+           v-for="pokemon in searchResult"
            :key="pokemon.name"
            class="pokemon-card">
         <img :src="pokemon.image"
              :alt="pokemon.name"/>
-        <h2>{{ pokemon.name }}</h2>
+        <h2><router-link :to="'/pokemon/' + pokemon.name">{{ pokemon.name }}</router-link></h2>
         <p>Prix : {{ pokemon.price }} XP</p>
-        <button class="add-basket"
-                @click="addToBasket(pokemon)">Ajouter au panier
-        </button>
+        <button @click="addToBasket(pokemon)">Ajouter au panier</button>
+      </div>
+
+      <!-- Si aucune recherche n'a été effectuée OU si la recherche a échoué, afficher les 25 Pokémon de départ -->
+      <div v-if="!searchResult"
+           v-for="pokemon in initialPokemons"
+           :key="pokemon.name"
+           class="pokemon-card">
+        <img :src="pokemon.image"
+             :alt="pokemon.name"/>
+        <h2><router-link :to="'/pokemon/' + pokemon.name">{{ pokemon.name }}</router-link></h2>
+        <p>Prix : {{ pokemon.price }} XP</p>
+        <button @click="addToBasket(pokemon)">Ajouter au panier</button>
       </div>
     </div>
   </div>
@@ -110,14 +130,35 @@ export default {
   padding: 2rem;
 }
 
-/* Barre de recherche */
 .search-bar {
-  width: 50%;
+  margin-bottom: 1rem;
+}
+
+.search-bar input {
   padding: 0.5rem;
   font-size: 1rem;
+  width: 250px;
+  margin-right: 0.5rem;
+}
+
+.search-bar button {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.search-bar button:hover {
+  background-color: #0056b3;
+}
+
+.error-message {
+  color: red;
+  font-size: 1.2rem;
   margin-bottom: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 0.5rem;
 }
 
 .pokemon-list {

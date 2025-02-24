@@ -48,8 +48,17 @@ async function getPokemonList() {
 }
 
 async function searchPokemon(name) {
-    return request(`/pokemon/${name}`);
+    try {
+        return await request(`/pokemon/${name}`);
+    } catch (error) {
+        if (error.message.includes("Not Found")) {
+            console.warn(`⚠️ Pokémon "${name}" introuvable.`);
+            return null; // Retourne null au lieu de lever une erreur
+        }
+        throw error; // Si l'erreur est autre, la relancer
+    }
 }
+
 
 async function getPokeDetails(pokeName) {
     return request(pokeName);

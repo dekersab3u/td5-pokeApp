@@ -1,7 +1,7 @@
 import { createMemoryHistory, createRouter } from 'vue-router'
 import Panier from "./../Panier.vue"
 import Accueil from './../Accueil.vue'
-
+import PokeDetails from "@/PokeDetails.vue";
 
 const routes = [
     {
@@ -14,6 +14,12 @@ const routes = [
         path: "/panier",
         name: "Panier",
         component: Panier,
+        meta: {}
+    },
+    {
+        path: "/pokemon/:name",
+        name: "PokeDetails",
+        component: PokeDetails,
         meta: {}
     }
 
