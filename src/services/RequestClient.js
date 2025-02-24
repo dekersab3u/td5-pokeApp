@@ -48,7 +48,7 @@ async function getPokemonList() {
 }
 
 async function searchPokemon(name) {
-    return request('/pokemon/${name}');
+    return request(`/pokemon/${name}`);
 }
 
 async function getPokeDetails(pokeName) {
