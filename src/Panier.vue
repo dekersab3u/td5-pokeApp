@@ -1,39 +1,24 @@
 <script>
 import { ref, computed, onMounted } from "vue";
-import { getBasket, clearBasket, decreaseQuantity, increaseQuantity, updateBasket } from "@/services/basket";
+import { getBasket, clearBasket, increaseQuantity, decreaseQuantity } from "@/services/basket";
 
 export default {
   name: "Panier",
-  methods: {increaseQuantity, decreaseQuantity},
   setup() {
     const basket = ref([]);
 
-    // Charger les données du panier au montage
-    onMounted(() => {
-      const storedBasket = getBasket();
-      const groupedBasket = storedBasket.reduce((acc, pokemon) => {
-        const existingPokemon = acc.find((item) => item.name === pokemon.name);
-        if (existingPokemon) {
-          existingPokemon.quantity += 1;
-        } else {
-          acc.push({ ...pokemon, quantity: 1 });
-        }
-        return acc;
-      }, []);
-      basket.value = groupedBasket;
-    });
+    // Charger les données du panier
+    const loadBasket = () => {
+      basket.value = getBasket(); // On récupère la version actualisée du panier
+    };
+
+    onMounted(loadBasket);
 
     const totalPrice = computed(() =>
         basket.value.reduce((sum, item) => sum + item.price * item.quantity, 0)
     );
 
-    // Vider le panier
-    const emptyBasket = () => {
-      clearBasket();
-      basket.value = [];
-    };
-
-    return { basket, totalPrice, emptyBasket };
+    return { basket, totalPrice, increaseQuantity, decreaseQuantity, clearBasket, loadBasket };
   },
 };
 </script>
@@ -58,9 +43,9 @@ export default {
         <td>{{ pokemon.name }}</td>
         <td>{{ pokemon.price }}</td>
         <td>
-          <button @click="decreaseQuantity(pokemon)">-</button>
+          <button @click="decreaseQuantity(pokemon); loadBasket()">➖</button>
           {{ pokemon.quantity }}
-          <button @click="increaseQuantity(pokemon)">+</button>
+          <button @click="increaseQuantity(pokemon); loadBasket()">➕</button>
         </td>
         <td>{{ pokemon.price * pokemon.quantity }}</td>
       </tr>
@@ -69,7 +54,7 @@ export default {
 
     <p><strong>Total du panier : {{ totalPrice }} XP</strong></p>
 
-    <button v-if="basket.length > 0" @click="emptyBasket">Vider le panier</button>
+    <button v-if="basket.length > 0" @click="clearBasket(); loadBasket()">Vider le panier</button>
   </div>
 </template>
 
@@ -97,17 +82,37 @@ th {
 }
 
 button {
-  margin-top: 1rem;
-  padding: 0.8rem 1.2rem;
+  margin: 0 0.5rem;
+  padding: 0.5rem;
   font-size: 1rem;
   cursor: pointer;
-  background-color: red;
-  color: white;
   border: none;
   border-radius: 0.5rem;
 }
 
 button:hover {
+  opacity: 0.8;
+}
+
+button:nth-child(1) {
+  background-color: #ff4d4d;
+  color: white;
+}
+
+button:nth-child(3) {
+  background-color: #4caf50;
+  color: white;
+}
+
+button:last-of-type {
+  margin-top: 1rem;
+  padding: 0.8rem 1.2rem;
+  font-size: 1rem;
+  background-color: red;
+  color: white;
+}
+
+button:last-of-type:hover {
   background-color: darkred;
 }
 </style>

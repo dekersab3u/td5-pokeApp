@@ -5,7 +5,14 @@ export function getBasket() {
 
 export function addToBasket(pokemon) {
     let basket = getBasket();
-    basket.push(pokemon);
+    const existingPokemon = basket.find((item) => item.name === pokemon.name);
+
+    if (existingPokemon) {
+        existingPokemon.quantity++;
+    } else {
+        basket.push({ ...pokemon, quantity: 1 });
+    }
+
     localStorage.setItem("basket", JSON.stringify(basket));
 }
 
@@ -14,24 +21,25 @@ export function clearBasket() {
 }
 
 export function increaseQuantity(pokemon) {
-    const item = basket.value.find((p) => p.name === pokemon.name);
+    let basket = getBasket();
+    const item = basket.find((p) => p.name === pokemon.name);
+
     if (item) {
         item.quantity++;
-        updateBasket();
+        localStorage.setItem("basket", JSON.stringify(basket));  // Mise à jour du localStorage
     }
 }
 
 export function decreaseQuantity(pokemon) {
-    const item = basket.value.find((p) => p.name === pokemon.name);
-    if (item && item.quantity > 1) {
-        item.quantity--;
-        updateBasket();
-    } else if (item && item.quantity === 1) {
-        basket.value = basket.value.filter((p) => p.name !== pokemon.name);
-        updateBasket();
-    }
-}
+    let basket = getBasket();
+    const item = basket.find((p) => p.name === pokemon.name);
 
-export function updateBasket() {
-    localStorage.setItem("panier", JSON.stringify(basket.value));
+    if (item) {
+        if (item.quantity > 1) {
+            item.quantity--;
+        } else {
+            basket = basket.filter((p) => p.name !== pokemon.name);
+        }
+        localStorage.setItem("basket", JSON.stringify(basket));  // Mise à jour du localStorage
+    }
 }
